@@ -565,7 +565,11 @@ def run_hook(cfg):
         return None
     event = data.get("hook_event_name")
     if cfg.disabled:
-        log.info("disabled via WORKFLOW_COPILOT_DISABLED | %s ignored", event)
+        # Paused: no recommendations. But if this session's API traffic goes through
+        # the proxy, it must still be running or Claude couldn't reach the API.
+        if event in ("SessionStart", "UserPromptSubmit") and routing_enabled(cfg):
+            ensure_proxy(cfg, wait_seconds=8 if event == "SessionStart" else 5)
+        log.info("paused via WORKFLOW_COPILOT_DISABLED | %s ignored", event)
         return None
     if event in ("SessionStart", "UserPromptSubmit") and not claim(cfg, event, data):
         log.info("skipped | %s already handled by another copy of this hook", event)

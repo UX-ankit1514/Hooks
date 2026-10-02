@@ -1,232 +1,297 @@
-# Workflow Copilot – Claude Code Router
+# Workflow Copilot for Claude Code
 
-Workflow Copilot picks **one best model** for every prompt you type in Claude Code, asks you
-**Use / Keep current**, and, if you accept, answers that prompt with the recommended model.
-No copying prompts into a website, no modes.
+**Get the right Claude model for every prompt, suggested automatically, accepted with one click.**
 
-```
-You type a prompt in Claude Code
-        │
-        ▼
-UserPromptSubmit hook ──► local proxy (127.0.0.1:8787) ──► Workflow Copilot router (mock or cloud)
-        │                        ◄── ONE model + short reason
-        ▼
-macOS popup:  "Recommended model: Claude Haiku 4.5 … Use this model for this prompt?"
-        │  Use                                   │ Keep current / no answer / any error
-        ▼                                        ▼
-proxy swaps the model for this turn        nothing changes
-        │                                        │
-        └──────────────► Claude answers your prompt ◄─┘
-```
+Every time you type a prompt in Claude Code, Workflow Copilot looks at it and suggests the one
+model that fits best: a fast model for quick questions, a stronger one for hard problems. You
+decide with one click. If you do nothing, nothing changes.
 
-## Quick start
+**Contents:** [What you'll see](#what-youll-see) · [Before you start](#before-you-start) ·
+[Install](#install-in-3-steps) · [Everyday use](#everyday-use) · [Pause, update, remove](#pause-update-or-remove-it) ·
+[Troubleshooting](#troubleshooting) · [Privacy](#privacy-and-safety) · [How it works](#how-it-works)
 
-```bash
-cd <this folder>
-bash scripts/install.sh          # sets everything up for this folder, safe to run again
-claude                           # open a NEW Claude Code session in this folder
-```
+---
 
-Want it in **every** Claude Code session instead? Use `bash scripts/install.sh --global`
-(see "Use it in every session" below).
+## What you'll see
 
-Type any prompt. A **Workflow Copilot** popup suggests a model:
+1. You type a prompt in Claude Code, exactly as you do today.
+2. A small **Workflow Copilot** window pops up on your Mac:
 
-- **Use …**: this prompt is answered by that model.
-- **Keep current**, or no click within 30 s: your current model is used.
+   ```
+   ┌─────────────────────────────────────────────────────┐
+   │  Workflow Copilot                                   │
+   │                                                     │
+   │  Recommended model: Claude Haiku 4.5                │
+   │  Reason: Short, simple request: a fast,             │
+   │  lightweight model is enough.                       │
+   │                                                     │
+   │  Use this model for this prompt?                    │
+   │                                                     │
+   │       [ Keep current ]   [ Use Claude Haiku 4.5 ]   │
+   └─────────────────────────────────────────────────────┘
+   ```
 
-After each prompt Claude Code shows a one-line note, e.g.
-`Workflow Copilot: using Claude Haiku 4.5 for this prompt. Short, simple request…`
+3. You click a button:
+   - **Use Claude Haiku 4.5**: this prompt is answered by the recommended model.
+   - **Keep current**: your usual model answers, as always.
+   - **Do nothing**: after 30 seconds it keeps your usual model.
+4. Claude answers. A short line under your prompt confirms what happened, for example
+   `Workflow Copilot: using Claude Haiku 4.5 for this prompt.`
 
-Use it in one other project folder: `bash scripts/install.sh --project ~/path/to/project`
+Your next prompt starts fresh: every prompt gets its own suggestion.
 
-## Use it in every session (global)
+---
 
-```bash
-bash scripts/install.sh --global      # add --no-routing for "suggest only, never switch"
-```
+## Before you start
 
-This writes the two hooks (and the routing setting) into your **user-level** Claude Code settings,
-`~/.claude/settings.json` (or `$CLAUDE_CONFIG_DIR/settings.json`), so every new session in any
-folder, including the desktop app and IDE extensions, gets them. Open sessions are unchanged
-until restarted.
+You need **a Mac** and **Claude Code, already installed and signed in**.
 
-What it does and doesn't do:
-- Merges into your existing settings; nothing else in the file is touched, and a timestamped
-  backup (`settings.json.bak-…`) is made first. A settings file it can't parse is left alone.
-- Hooks point at *this* folder, so **keep it where it is**. If you move it, run the installer again.
-- The hook command ends in `|| true`, so even a deleted/broken hook file can never block a prompt.
-- If something already sets `ANTHROPIC_BASE_URL` (another gateway in your settings or in
-  `~/.zshrc` etc.), routing is **not** switched on, so your gateway keeps working; you get
-  suggestions only. To chain them, put that URL in `.env` as `WORKFLOW_COPILOT_UPSTREAM_URL`
-  and re-run the installer.
-- Installed both globally and per project? It still asks only once per prompt (a run-once guard).
-- Scripted runs (`claude -p`, SDK) are skipped: no popup, no routing. Set
-  `WORKFLOW_COPILOT_CONFIRM_UI=auto-accept` to opt a script in.
-- Only works for Claude Code talking to Anthropic directly (subscription or API key). If you use
-  Bedrock/Vertex/Foundry, `ANTHROPIC_BASE_URL` isn't used, so routing can't apply.
-- With the built-in mock router you will get a popup on most prompts. Once the real router
-  exists (below) this gets much quieter, since no popup shows when the suggestion equals your
-  current model.
+Everything else is checked for you during installation. If your Mac is missing a tool
+(Python or Git), macOS will offer to install it; click **Install** and wait a few minutes.
 
-Undo: `bash scripts/uninstall.sh --global`.
+> [!TIP]
+> **Never used Terminal?** Terminal is the Mac app where you type commands. Open it by pressing
+> <kbd>⌘ Command</kbd> + <kbd>Space</kbd>, typing **Terminal**, and pressing <kbd>Return</kbd>.
+> To run a command from this page: copy it, click in the Terminal window, paste
+> (<kbd>⌘ Command</kbd> + <kbd>V</kbd>) and press <kbd>Return</kbd>.
 
-## Share it with someone else
+---
+
+## Install in 3 steps
+
+### Step 1: Open Terminal
+
+Press <kbd>⌘ Command</kbd> + <kbd>Space</kbd>, type **Terminal**, press <kbd>Return</kbd>.
+
+### Step 2: Copy, paste and run this
 
 ```bash
-bash scripts/package.sh      # creates dist/workflow-copilot-claude-code-<version>.zip
+git clone https://github.com/UX-ankit1514/Hooks.git ~/workflow-copilot
+cd ~/workflow-copilot
+bash scripts/install.sh --global
 ```
 
-The zip is built from an allow-list (code, scripts, tests, docs, `.env.example`) and the script
-refuses to build if it finds a `.env`, logs, state, a `.venv`, a personal path or a key. Send the
-zip by AirDrop, email, Slack or a shared drive. The recipient follows **START-HERE.md** (inside
-the zip): unzip somewhere permanent, run `bash scripts/install.sh --global`, restart Claude Code.
+This downloads Workflow Copilot into a folder called **workflow-copilot** in your home folder
+and switches it on for **every** Claude Code session. It takes about a minute. When it's done
+you'll see a list of green ticks ending with **Done.**
 
-Using GitHub instead? From this folder: `git init`, `git add .`, `git commit -m "Workflow Copilot for Claude Code"`,
-create an empty repository on github.com, then run the two `git remote add origin …` /
-`git push -u origin main` lines GitHub shows you. `.gitignore` already keeps `.env`, `.venv`,
-logs, state, generated settings and `dist/` out. Recipients then `git clone` it instead of
-unzipping. Prefer a **private** repository until `/api/route` is live.
+> [!IMPORTANT]
+> Keep the `workflow-copilot` folder where it is. Claude Code uses it on every prompt. If you
+> ever move it, run `bash scripts/install.sh --global` again from its new location.
 
-What recipients need: a Mac, Claude Code signed in with their own account (their credentials pass
-straight through the proxy; nothing of yours is in the zip), and Python 3.9+. Each person gets
-their own local proxy, logs and settings. Nothing is shared between machines.
+### Step 3: Restart Claude Code
 
-## Turning it off
+Quit Claude Code completely (and any open Claude Code windows in Terminal), then open it again.
+Type any prompt. The Workflow Copilot popup appears.
 
-| What you want | Command |
+**That's it.**
+
+<details>
+<summary><b>Other ways to install</b> (one folder only, suggestions only, no Git)</summary>
+
+<br>
+
+**Choose how it behaves.** Run one of these instead of the last line in Step 2:
+
+| I want… | Run |
 |---|---|
-| Check that everything is OK | `bash scripts/doctor.sh` |
-| Show recommendations, never switch models | `bash scripts/install.sh --no-routing` |
-| Pause it without uninstalling | set `WORKFLOW_COPILOT_DISABLED=1` in `.env` |
-| Remove it completely | `bash scripts/uninstall.sh` (add `--global` if you installed it globally, `--purge` to delete `.venv`, `logs`, `state`) |
+| It in **every** Claude Code session *(recommended)* | `bash scripts/install.sh --global` |
+| It **only in one project folder** | `bash scripts/install.sh --project ~/path/to/your/project` |
+| **Suggestions only**: show the popup's advice, never switch models | add `--no-routing` to either line above |
 
-Restart Claude Code after any of these.
+**Without Git (download a ZIP):**
 
-## Settings (`.env`)
+1. On this GitHub page, click the green **Code** button → **Download ZIP**.
+2. Open the downloaded file. You get a folder called **Hooks-main**.
+3. Rename it to **workflow-copilot** and move it into your home folder (in Finder: **Go → Home**).
+4. In Terminal, run:
+   ```bash
+   cd ~/workflow-copilot
+   bash scripts/install.sh --global
+   ```
+5. Restart Claude Code.
 
-`install.sh` creates `.env` from `.env.example`. Never commit `.env`.
+</details>
 
-| Setting | Default | Meaning |
-|---|---|---|
-| `WORKFLOW_COPILOT_API_URL` | *(empty = mock)* | Where recommendations come from (see below) |
-| `WORKFLOW_COPILOT_API_STYLE` | auto | `route` (planned contract) or `analyze` (today's site); auto-detected from the URL |
-| `WORKFLOW_COPILOT_API_KEY` | | Optional bearer token for the cloud router |
-| `WORKFLOW_COPILOT_API_TIMEOUT` | `25` | Seconds to wait for the router |
-| `WORKFLOW_COPILOT_CONFIRM_UI` | `auto` | `auto` (terminal, then popup), `dialog`, `tty`, `auto-accept`, `never` |
-| `WORKFLOW_COPILOT_CONFIRM_TIMEOUT` | `30` | Seconds before "no answer" keeps your current model |
-| `WORKFLOW_COPILOT_UPSTREAM_URL` | `https://api.anthropic.com` | Where Claude Code's requests are forwarded |
-| `WORKFLOW_COPILOT_MAX_PROMPT_CHARS` | `8000` | Only this much of a prompt is sent for routing |
-| `WORKFLOW_COPILOT_LOG_PROMPTS` | `0` | `1` adds an 80-character prompt preview to logs |
-| `WORKFLOW_COPILOT_PORT` | `8787` | Local proxy port |
+---
 
-The proxy reads `.env` when it starts. After editing it, restart the proxy with
-`python3 hooks/workflow_copilot_hook.py --stop-proxy` (it starts again automatically).
+## Everyday use
 
-## Connecting the real Workflow Copilot
+**Just use Claude Code normally.** When a suggestion appears, click **Use** or **Keep current**.
 
-What the live site exposes today (checked 2026-10-02):
+### The messages under your prompt
 
-| Endpoint | Status |
+| Message | What it means |
 |---|---|
-| `POST /api/route` | **does not exist (404)**. This needs to be added to the website. |
-| `POST /api/analyze` | exists; returns a long free-text analysis from an LLM |
+| `Workflow Copilot: using Claude Sonnet 5.5 for this prompt.` | You clicked **Use**. This prompt was answered by that model. |
+| `Workflow Copilot: kept your current model (recommended …)` | You clicked **Keep current**. |
+| `Workflow Copilot: no answer within 30s, kept your current model …` | The popup timed out. Nothing changed. |
+| `Workflow Copilot recommends …, which is already your current model.` | You're already on the best model. No popup needed. |
+| `Workflow Copilot recommends GPT-4o … isn't set up yet. Keeping your current model.` | The best fit is a non-Claude model. Claude Code can only switch between Claude models, so nothing changed. |
+| `… (Recommendation only: model routing is off for this session.)` | Installed with `--no-routing`, or this session was opened before you installed. Restart Claude Code to switch it on. |
+| `Workflow Copilot is unavailable right now … Continuing with your current model.` | Something went wrong behind the scenes. Claude still answers normally. See [Troubleshooting](#troubleshooting). |
 
-**Today:** set
-`WORKFLOW_COPILOT_API_URL=https://workflow-copilot-ten.vercel.app/api/analyze` to use the
-existing analyzer. The proxy reads its "SECTION 1: RECOMMENDED MODEL" line and drops the tier
-(low/max…). This works (≈4 s per prompt) but has limits:
+### Good to know
 
-- it only knows an old model list (GPT-4o, Gemini 1.5/2.5, *Claude 3/4*), so most of its picks
-  are Gemini/GPT, which Claude Code can't run (shown, never applied);
-- retired Claude names (e.g. "Claude 3 Opus") are mapped to the current model of the same
-  family, and the note says so;
-- every prompt costs one LLM call on the site's Curvet account, and the endpoint has no auth.
+- **Claude Code's status bar keeps showing your usual model name.** The message under your prompt
+  tells you which model actually answered.
+- **No popup** appears for slash commands (like `/help`), when the suggestion is already your
+  current model, or in automated scripts (`claude -p`).
+- **Every prompt is decided separately.** Accepting once doesn't change your next prompt.
 
-**Next step (website change):** add `POST /api/route` with this contract:
+---
 
-```http
-POST /api/route
-Content-Type: application/json
-Authorization: Bearer <WORKFLOW_COPILOT_API_KEY>   (recommended)
+## Pause, update or remove it
 
-{ "prompt": "…", "client": "claude-code" }
+Open Terminal and copy-paste the line you need:
+
+| I want to… | Run this |
+|---|---|
+| **Check that everything is working** | `bash ~/workflow-copilot/scripts/doctor.sh` |
+| **Pause** it (no popups; Claude works as normal) | `bash ~/workflow-copilot/scripts/pause.sh` |
+| **Resume** after pausing | `bash ~/workflow-copilot/scripts/resume.sh` |
+| **See suggestions but never switch** models | `bash ~/workflow-copilot/scripts/install.sh --global --no-routing` |
+| **Update** to the newest version | `cd ~/workflow-copilot && git pull && bash scripts/install.sh --global` |
+| **Remove it completely** | `bash ~/workflow-copilot/scripts/uninstall.sh --global` |
+
+Pause and resume take effect from your next prompt. For everything else, **restart Claude Code**
+afterwards. After removing it you can delete the `workflow-copilot` folder.
+
+Installed from a ZIP instead of Git? To update, download the new ZIP, replace the folder, and run
+`bash scripts/install.sh --global` inside it.
+
+---
+
+## Troubleshooting
+
+**First, always:** run the health check. It tells you what's wrong and the exact command to fix it.
+
+```bash
+bash ~/workflow-copilot/scripts/doctor.sh
 ```
-```json
-{ "recommended_model": "claude-sonnet-5-5", "reason": "Coding task; strong and fast.", "confidence": 0.82 }
+
+<details>
+<summary><b>Claude Code shows a connection error or "API error"</b></summary>
+
+<br>
+
+Workflow Copilot runs a small helper program on your Mac that Claude Code talks through. It
+normally restarts itself, but you can start it manually:
+
+```bash
+python3 ~/workflow-copilot/hooks/workflow_copilot_hook.py --start-proxy
 ```
 
-Recommendations for that endpoint:
-- When `client` is `claude-code`, choose only among models Claude Code can run (current Claude
-  models), and return API ids (`claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-4-5`,
-  `claude-fable-5-1`). Display names like "Claude Sonnet 5.5" also work.
-- Keep `reason` to one sentence; no tiers or modes.
-- Respond in under ~3 s (it runs before every prompt) and require an API key.
+Still stuck? Switch model-switching off. Claude Code then talks to Anthropic directly again,
+and you keep getting suggestions:
 
-Then set `WORKFLOW_COPILOT_API_URL=https://workflow-copilot-ten.vercel.app/api/route`.
-To rehearse the contract locally: `WORKFLOW_COPILOT_API_URL=http://127.0.0.1:8787/mock/api/route`.
+```bash
+bash ~/workflow-copilot/scripts/install.sh --global --no-routing
+```
+
+Then restart Claude Code.
+</details>
+
+<details>
+<summary><b>I don't see the popup</b></summary>
+
+<br>
+
+- Did you **restart Claude Code** after installing? Sessions opened before installing don't use it.
+- The popup may be **behind another window**. Check Mission Control (<kbd>F3</kbd>) or the Dock.
+- Is it paused? Run `bash ~/workflow-copilot/scripts/resume.sh`.
+- Run the health check (above).
+</details>
+
+<details>
+<summary><b>"command not found: python3" or "command not found: git"</b></summary>
+
+<br>
+
+Your Mac needs Apple's free developer tools. Run this, click **Install**, wait until it finishes,
+then try the installation again:
+
+```bash
+xcode-select --install
+```
+</details>
+
+<details>
+<summary><b>The installer says "NOT enabling routing"</b></summary>
+
+<br>
+
+You already use another service that routes Claude Code's traffic (a company gateway or proxy).
+Workflow Copilot won't interfere with it, so you get **suggestions only**. Ask whoever set up that
+gateway, or see the technical guide on [chaining them](docs/HOW-IT-WORKS.md#install-scopes).
+</details>
+
+<details>
+<summary><b>I moved or renamed the workflow-copilot folder</b></summary>
+
+<br>
+
+Go to the folder's new location in Terminal and run the installer again:
+
+```bash
+cd /path/to/new/location/workflow-copilot
+bash scripts/install.sh --global
+```
+</details>
+
+<details>
+<summary><b>Where are the logs?</b></summary>
+
+<br>
+
+In `~/workflow-copilot/logs/`: `hook.log` and `proxy.log`. They record suggestions and your
+choices. They **never** contain your prompt text or passwords/keys.
+</details>
+
+---
+
+## Privacy and safety
+
+- **It's built not to get in Claude's way.** If a suggestion fails (no internet, an error, a popup
+  that can't open), Claude Code simply carries on with your usual model. The one exception: if
+  the helper program on your Mac can't run at all, Claude Code can't connect. The health check
+  spots this, and [one command fixes it](#troubleshooting).
+- **Your Claude account stays yours.** Workflow Copilot runs only on your Mac and passes your
+  Claude Code sign-in straight through. It doesn't store it, log it or send it anywhere else.
+- **Your prompts stay on your Mac.** Suggestions are currently made by a built-in recommender
+  on your computer. Logs record only a prompt's length, never its text. If the online Workflow
+  Copilot service is switched on in a future version, your prompt text will be sent to it to get a
+  suggestion; this README will say so clearly.
+- **Your settings are safe.** The installer backs up your Claude Code settings before changing
+  them, changes only its own entries, and the uninstaller removes exactly those.
+
+---
+
+## Current limitations
+
+- **Mac only** (the popup is a macOS window).
+- **Claude models only.** Workflow Copilot may *recommend* GPT or Gemini, but Claude Code can only
+  switch between Claude models, so those are shown as advice only.
+- Requires Claude Code signed in **directly with Anthropic** (Claude subscription or Anthropic API
+  key). Not for Amazon Bedrock, Google Vertex or Microsoft Foundry setups.
+- Suggestions currently come from a simple built-in recommender. The full Workflow Copilot
+  service is coming. Until then you may see a suggestion on most prompts.
+
+---
 
 ## How it works
 
-- **SessionStart hook** makes sure the proxy is running (starts it if needed) and registers
-  the session. It never routes.
-- **UserPromptSubmit hook** sends the prompt to the proxy's `/recommend`, asks Use/Keep, and
-  saves the answer via `/selection`. It always exits successfully, so Claude always continues.
-- **Routing**: `install.sh` sets `ANTHROPIC_BASE_URL=http://127.0.0.1:8787` for this project
-  only (`.claude/settings.local.json`, git-ignored). Claude Code's API requests then pass
-  through the proxy, which forwards them to Anthropic untouched, except during a turn where you
-  accepted a recommendation. Then the main requests use the recommended model, adjusted
-  for what that model supports (e.g. Haiku has no adaptive thinking). Your login is passed
-  through as-is; the proxy never stores or logs credentials.
-- **Fail-open**: if the router, internet, popup or anything else fails, your current model is
-  kept and the reason is logged. If Anthropic rejects a routed request, the proxy retries it
-  once with your original model.
-- **Providers**: recommendation and execution are separate (`proxy/provider.py`). Only the
-  Anthropic adapter executes today; OpenAI/Codex, Gemini, OpenRouter… are registered as
-  "not configured" placeholders, so they are shown but never faked.
+In short: Workflow Copilot adds two small **hooks** (automatic steps) to Claude Code, plus a
+small helper program that runs on your Mac.
 
-### Known limits (V1)
+- When Claude Code **starts**, a hook makes sure the helper is running.
+- When you **send a prompt**, a hook asks the helper for the best model and shows you the popup.
+- If you click **Use**, the helper sends that one prompt to the recommended model. Everything else
+  goes to Anthropic unchanged.
 
-- **No terminal `[Y/n]`.** Claude Code runs hooks without a terminal (`/dev/tty` is not
-  available), so the macOS popup is used instead. The terminal prompt still works where a
-  terminal exists, and is tried first.
-- Claude Code's status bar keeps showing your configured model; the note under your prompt
-  (and `logs/proxy.log`) shows what actually answered.
-- Claude Code's small background helpers (titles, summaries; they run on Haiku) are never
-  rerouted. If your own main model is Haiku, recommendations can't be applied.
-- With routing on, Claude Code reaches the API *through* the proxy. The hooks restart it
-  automatically at session start and before every prompt; if it can't start, `doctor.sh` tells
-  you, or turn routing off with `install.sh --no-routing`.
+Developers: architecture, settings, the router API and tests are in
+**[docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md)**.
 
-## Logs
+---
 
-`logs/hook.log` (hook) and `logs/proxy.log` (proxy). They record sessions, recommendations,
-accept/reject, routing and fallbacks. Prompts are logged only as length + fingerprint; API
-keys and auth headers are never logged.
-
-## Project layout
-
-```
-.claude/settings.json            project hooks (created/merged by install.sh; git-ignored)
-.claude/settings.local.json      ANTHROPIC_BASE_URL for routing (personal, git-ignored)
-~/.claude/settings.json          the same, for every session, when installed with --global
-hooks/workflow_copilot_hook.py   SessionStart + UserPromptSubmit hook (standard library only)
-proxy/app.py                     FastAPI proxy: /health /session/start /recommend /selection + passthrough
-proxy/router_client.py           mock, /api/route and /api/analyze clients
-proxy/provider.py                model catalog + provider adapters
-proxy/session_store.py           per-session state (state/sessions.json)
-proxy/config.py                  settings from env/.env
-scripts/install.sh | uninstall.sh | doctor.sh | settings_tool.py | package.sh
-START-HERE.md                    plain-English install guide for people you share it with
-tests/                           pytest suite (`.venv/bin/python -m pytest`)
-```
-
-## Testing
-
-```bash
-.venv/bin/python -m pytest        # 82 tests, ~25 s, no network or popups needed
-bash scripts/doctor.sh --tests    # health check + tests
-```
-
-Mock router test hook: a prompt containing `wc-test: GPT-4o` (or any model name) makes the
-mock recommend that model, which is handy for trying unsupported-model behaviour.
+<sub>Workflow Copilot · <a href="https://workflow-copilot-ten.vercel.app/analyzer">workflow-copilot-ten.vercel.app</a></sub>

@@ -53,6 +53,8 @@ fi
 ok "Claude Code hooks configured"
 
 step "5/6 Starting the local proxy"
+# Restart so an update always runs the newest code.
+"$PY" "$REPO/hooks/workflow_copilot_hook.py" --stop-proxy >/dev/null 2>&1
 "$PY" "$REPO/hooks/workflow_copilot_hook.py" --start-proxy >/dev/null || fail "proxy did not start - see logs/proxy.out.log"
 ok "proxy running"
 

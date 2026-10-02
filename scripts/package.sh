@@ -1,5 +1,6 @@
 #!/bin/bash
 # Builds a clean, shareable zip in dist/ (nothing personal: no .env, .venv, logs, state or settings).
+# Easiest way to share is the GitHub link; use this for sending a file (AirDrop, email, Slack).
 #   bash scripts/package.sh
 set -eu
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
@@ -12,7 +13,7 @@ trap 'rm -rf "$STAGE"' EXIT
 mkdir -p "$STAGE/$NAME" "$REPO/dist"
 cd "$REPO"
 # Allow-list: only these go into the zip.
-for item in START-HERE.md README.md requirements.txt pytest.ini .env.example .gitignore hooks proxy scripts tests; do
+for item in README.md docs requirements.txt pytest.ini .env.example .gitignore hooks proxy scripts tests; do
   cp -R "$item" "$STAGE/$NAME/"
 done
 find "$STAGE" \( -name __pycache__ -o -name .pytest_cache \) -type d -prune -exec rm -rf {} +

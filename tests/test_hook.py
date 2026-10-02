@@ -366,3 +366,32 @@ def session_state_or_none(proxy):
         return session_state(proxy)
     except OSError:
         return None
+
+
+def test_paused_hook_still_keeps_the_proxy_alive_when_routing(tmp_path):
+    """Paused + routing on + proxy down must not leave Claude without its API route."""
+    port = free_port()
+    env = base_env(tmp_path, port, WORKFLOW_COPILOT_DISABLED="1",
+                   ANTHROPIC_BASE_URL="http://127.0.0.1:{}".format(port))
+    try:
+        result = run_hook({"session_id": SESSION, "hook_event_name": "SessionStart", "source": "startup"}, env)
+        assert result.message is None  # paused: quiet
+        assert get_json("http://127.0.0.1:{}/health".format(port))["status"] == "ok"
+        assert run_hook(prompt_event(), env).message is None  # no recommendation while paused
+    finally:
+        subprocess.run([sys.executable, str(HOOK), "--stop-proxy"], env=env, capture_output=True, timeout=20)
+
+
+def test_pause_and_resume_scripts(tmp_path):
+    import shutil
+    copy = tmp_path / "repo"
+    (copy / "scripts").mkdir(parents=True)
+    for name in ("pause.sh", "resume.sh", "set_env.py"):
+        shutil.copy2(str(ROOT / "scripts" / name), str(copy / "scripts" / name))
+    (copy / ".env.example").write_text("WORKFLOW_COPILOT_PORT=8787\nWORKFLOW_COPILOT_DISABLED=0\n")
+    subprocess.run(["bash", str(copy / "scripts" / "pause.sh")], check=True, capture_output=True)
+    text = (copy / ".env").read_text()
+    assert "WORKFLOW_COPILOT_DISABLED=1" in text and "WORKFLOW_COPILOT_PORT=8787" in text
+    subprocess.run(["bash", str(copy / "scripts" / "resume.sh")], check=True, capture_output=True)
+    assert (copy / ".env").read_text().count("WORKFLOW_COPILOT_DISABLED") == 1
+    assert "WORKFLOW_COPILOT_DISABLED=0" in (copy / ".env").read_text()
