@@ -1,6 +1,6 @@
 # How Workflow Copilot for Claude Code works
 
-This is the technical guide. For installing and everyday use, see the [README](../README.md).
+The technical deep dive. For installing, everyday use, settings and commands, see the [README](../README.md).
 
 ## Architecture
 
@@ -75,27 +75,6 @@ prompt), scripted runs (`CLAUDE_CODE_ENTRYPOINT=sdk-*`, e.g. `claude -p`) are sk
 `WORKFLOW_COPILOT_CONFIRM_UI=auto-accept`, and while paused it still keeps the proxy alive when
 routing is on.
 
-## Settings (`.env`)
-
-The installer creates `.env` from `.env.example`. Never commit `.env`.
-
-| Setting | Default | Meaning |
-|---|---|---|
-| `WORKFLOW_COPILOT_API_URL` | *(empty = mock)* | Where recommendations come from |
-| `WORKFLOW_COPILOT_API_STYLE` | auto | `route` (planned contract) or `analyze` (today's site); auto-detected from the URL |
-| `WORKFLOW_COPILOT_API_KEY` | | Optional bearer token for the cloud router |
-| `WORKFLOW_COPILOT_API_TIMEOUT` | `25` | Seconds to wait for the router |
-| `WORKFLOW_COPILOT_CONFIRM_UI` | `auto` | `auto` (terminal, then popup), `dialog`, `tty`, `auto-accept`, `never` |
-| `WORKFLOW_COPILOT_CONFIRM_TIMEOUT` | `30` | Seconds before "no answer" keeps the current model |
-| `WORKFLOW_COPILOT_UPSTREAM_URL` | `https://api.anthropic.com` | Where Claude Code's requests are forwarded |
-| `WORKFLOW_COPILOT_MAX_PROMPT_CHARS` | `8000` | Only this much of a prompt is sent for routing |
-| `WORKFLOW_COPILOT_LOG_PROMPTS` | `0` | `1` adds an 80-character prompt preview to logs |
-| `WORKFLOW_COPILOT_DISABLED` | `0` | `1` pauses it (`scripts/pause.sh` / `resume.sh`) |
-| `WORKFLOW_COPILOT_PORT` | `8787` | Local proxy port |
-
-The hook reads `.env` on every run; the proxy reads it at start. After changing router settings,
-restart the proxy: `python3 hooks/workflow_copilot_hook.py --stop-proxy` (it restarts by itself).
-
 ## Connecting the real Workflow Copilot router
 
 Status of the live site (checked 2026-10-02):
@@ -147,28 +126,9 @@ Rehearse locally with `WORKFLOW_COPILOT_API_URL=http://127.0.0.1:8787/mock/api/r
 `logs/hook.log` and `logs/proxy.log` record sessions, recommendations, accept/reject, routing and
 fallbacks. Prompts appear only as length + fingerprint; keys and auth headers are never logged.
 
-## Project layout
+## See also
 
-```
-hooks/workflow_copilot_hook.py   SessionStart + UserPromptSubmit hook (standard library only)
-proxy/app.py                     FastAPI proxy: endpoints above + passthrough
-proxy/router_client.py           mock, /api/route and /api/analyze clients
-proxy/provider.py                model catalog + provider adapters
-proxy/session_store.py           per-session state (state/sessions.json)
-proxy/config.py                  settings from env/.env
-scripts/install.sh  uninstall.sh  doctor.sh  pause.sh  resume.sh  package.sh
-scripts/settings_tool.py         safe settings merge (project or --global)
-scripts/set_env.py               edit one .env value
-tests/                           pytest suite
-```
-
-## Development
-
-```bash
-.venv/bin/python -m pytest        # 84 tests, ~25 s, no network or popups needed
-bash scripts/doctor.sh --tests    # health check + tests
-bash scripts/package.sh           # shareable zip in dist/ (refuses to include anything private)
-```
-
-Mock router trick: a prompt containing `wc-test: GPT-4o` (or any model name) makes the mock
-recommend that model, which is handy for trying unsupported-model behaviour.
+- [Configuration and every `.env` setting](../README.md#configuration)
+- [Commands](../README.md#commands) and [Repository layout](../README.md#repository-layout)
+- [Testing](../README.md#testing). Mock router trick: a prompt containing `wc-test: GPT-4o`
+  (or any model name) makes the built-in recommender suggest that model.
