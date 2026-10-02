@@ -5,10 +5,9 @@
 **Get the right Claude model for every prompt. Type as usual, Workflow Copilot suggests the best model, and one click switches to it, without ever leaving Claude Code.**
 
 [![CI](https://github.com/UX-ankit1514/Hooks/actions/workflows/ci.yml/badge.svg)](https://github.com/UX-ankit1514/Hooks/actions/workflows/ci.yml)
-![Works with](https://img.shields.io/badge/works%20with-Claude%20Code-d97757)
+![Works with](https://img.shields.io/badge/works%20with-Claude%20Code%20on%20macOS-d97757)
 ![Hooks](https://img.shields.io/badge/hooks-SessionStart%20%2B%20UserPromptSubmit-8250df)
-![Proxy](https://img.shields.io/badge/local%20proxy-Python%20%2B%20FastAPI-3776ab)
-![Platform](https://img.shields.io/badge/platform-macOS-555555)
+![Proxy](https://img.shields.io/badge/proxy-Python%20%2B%20FastAPI-3776ab)
 ![Running cost](https://img.shields.io/badge/running%20cost-%240-2ea44f)
 
 </div>
