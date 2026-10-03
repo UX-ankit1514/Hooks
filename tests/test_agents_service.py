@@ -89,7 +89,7 @@ def test_uninstall_removes_plist_and_only_its_own_folder(tmp_path, env):
     assert (stranger / "keep.txt").read_text() == "mine"
 
 
-@pytest.mark.skipif(sys.platform != "darwin" or os.environ.get("CI"), reason="needs a Mac; builds a real venv")
+@pytest.mark.skipif(sys.platform != "darwin" or bool(os.environ.get("CI")), reason="needs a Mac; builds a real venv")
 def test_service_environment_can_be_built_and_runs_the_proxy(tmp_path, env):
     """The part that failed on Desktop: the service's own venv + copy must start the proxy by themselves."""
     sys.path.insert(0, str(ROOT / "scripts"))
