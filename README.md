@@ -1,13 +1,12 @@
 <div align="center">
 
-# 🧭 Workflow Copilot for Claude Code
+# 🧭 Workflow Copilot for Claude Code, Codex and Copilot
 
-**Get the right Claude model for every prompt. Type as usual, Workflow Copilot suggests the best model, and one click switches to it, without ever leaving Claude Code.**
+**Get the right model for every prompt. Type as usual, Workflow Copilot suggests the best model, and one click switches to it, without ever leaving your terminal.**
 
 [![CI](https://github.com/UX-ankit1514/Hooks/actions/workflows/ci.yml/badge.svg)](https://github.com/UX-ankit1514/Hooks/actions/workflows/ci.yml)
-![Works with](https://img.shields.io/badge/works%20with-Claude%20Code%20on%20macOS-d97757)
+![Works with](https://img.shields.io/badge/works%20with-Claude%20Code%20%C2%B7%20Codex%20%C2%B7%20Copilot%20CLI-d97757)
 ![Hooks](https://img.shields.io/badge/hooks-SessionStart%20%2B%20UserPromptSubmit-8250df)
-![Proxy](https://img.shields.io/badge/proxy-Python%20%2B%20FastAPI-3776ab)
 ![Running cost](https://img.shields.io/badge/running%20cost-%240-2ea44f)
 
 </div>
@@ -18,12 +17,14 @@
 
 - [The problem](#the-problem)
 - [How it works for people](#how-it-works-for-people)
+- [Works with Claude Code, Codex and Copilot](#works-with-claude-code-codex-and-copilot)
 - [What it solves](#what-it-solves)
 - [How it works under the hood](#how-it-works-under-the-hood)
 - [Tech stack](#tech-stack)
 - [Repository layout](#repository-layout)
 - [Getting started](#getting-started)
   - [Installing on another Mac](#installing-on-another-mac)
+  - [Using it with Codex or GitHub Copilot](#using-it-with-codex-or-github-copilot)
 - [Configuration](#configuration)
 - [Commands](#commands)
 - [Connecting the Workflow Copilot router](#connecting-the-workflow-copilot-router)
@@ -90,6 +91,31 @@ Workflow Copilot moves that decision into Claude Code itself, and asks you only 
 
 ---
 
+## Works with Claude Code, Codex and Copilot
+
+The same popup and the same recommendation, in three tools. Each tool has its own way of running
+hooks and switching models, so each gets a small adapter. They share one router, one popup and one
+set of settings, and they can be installed side by side.
+
+| | Claude Code | Codex CLI | GitHub Copilot CLI |
+| --- | --- | --- | --- |
+| **Install** | `bash scripts/install.sh --global` | `bash scripts/install_codex.sh` | `bash scripts/install_copilot.sh` |
+| **How it asks you** | `UserPromptSubmit` hook | `UserPromptSubmit` hook | Copilot extension |
+| **How the model is switched** | Local proxy for that one prompt | Local proxy for that one prompt | Copilot's own model switch, then back |
+| **Models it can switch to** | Claude models | The models in your Codex list | The models in your Copilot plan |
+| **One-time step** | None | Trust the hooks with `/hooks` | Copilot needs experimental mode (the installer turns it on) |
+| **Scripted runs stay quiet** | `claude -p` | `codex exec` | `copilot -p` |
+
+> [!NOTE]
+> Codex and Copilot need their own small helper (port 8788); Claude Code keeps its own (port
+> 8787), unchanged. Copilot only changes models between prompts, so a switched prompt appears
+> twice in its timeline: once with a one-line note, then answered on the new model. Step-by-step
+> instructions, options and troubleshooting are in the
+> [Codex and Copilot guide](docs/CODEX-COPILOT-GUIDE.md). How it was designed is in the
+> [plan](docs/CODEX-COPILOT-PLAN.md).
+
+---
+
 ## What it solves
 
 ### ✅ For you as a Claude Code user
@@ -120,7 +146,7 @@ Workflow Copilot moves that decision into Claude Code itself, and asks you only 
 
 ### 🔌 Built to grow
 
-- **Recommendation is separate from execution.** Workflow Copilot can recommend *any* model (GPT, Gemini, …), but only switches when a real adapter can run it. Today that's Anthropic. Other providers are shown as advice and **never faked**.
+- **Recommendation is separate from execution.** Workflow Copilot can recommend *any* model (GPT, Gemini, …), but only switches when a real adapter can run it. Today that's Claude in Claude Code, and the models in your own Codex list or Copilot plan. A model none of your tools can run is shown as advice and **never faked**.
 
 ---
 
@@ -196,8 +222,9 @@ The deep dive (proxy endpoints, safety checks, the router API) is in [docs/HOW-I
 
 | Part | Built with | Runs on |
 | --- | --- | --- |
-| Hooks | Python 3 standard library: Claude Code `SessionStart` + `UserPromptSubmit` command hooks | Your Mac, inside Claude Code |
-| Local proxy | FastAPI, uvicorn, httpx (streaming passthrough) | Your Mac, `127.0.0.1:8787` |
+| Hooks | Python 3 standard library: `SessionStart` + `UserPromptSubmit` command hooks (Claude Code, Codex) | Your Mac, inside the tool |
+| Copilot extension | JavaScript (Copilot CLI extension API) | Your Mac, inside Copilot CLI |
+| Local proxies | FastAPI, uvicorn, httpx (streaming passthrough) | Your Mac, `127.0.0.1:8787` (Claude Code) and `:8788` (Codex) |
 | Use / Keep popup | macOS `osascript` dialog, terminal `[Y/n]` fallback | macOS |
 | Recommendations | Built-in local recommender, or the Workflow Copilot cloud router | Your Mac / Vercel |
 | State | One JSON file, no database | Your Mac |
@@ -210,16 +237,23 @@ The deep dive (proxy endpoints, safety checks, the router API) is in [docs/HOW-I
 ```text
 .
 ├── hooks/
-│   └── workflow_copilot_hook.py   The hook Claude Code runs (SessionStart + UserPromptSubmit)
-├── proxy/                         The local proxy
+│   ├── workflow_copilot_hook.py          The hook Claude Code runs (SessionStart + UserPromptSubmit)
+│   ├── workflow_copilot_codex_hook.py    The same hooks for Codex CLI
+│   ├── workflow_copilot_copilot_hook.py  The decision script for GitHub Copilot CLI
+│   ├── copilot-extension/                The Copilot extension (asks you, switches the model)
+│   └── agents_common.py                  Code shared by the Codex and Copilot hooks
+├── proxy/                         The local proxy (Claude Code)
 │   ├── app.py                     Endpoints + passthrough to the Anthropic API
 │   ├── router_client.py           Built-in recommender, /api/route and /api/analyze clients
 │   ├── provider.py                Model catalog and provider adapters
 │   ├── session_store.py           Per-session state (state/sessions.json)
-│   └── config.py                  Settings from .env
-├── scripts/                       install, uninstall, doctor, pause, resume, package
+│   ├── config.py                  Settings from .env
+│   └── agents/                    The second local proxy, for Codex and Copilot (port 8788)
+├── scripts/                       install, uninstall, doctor (also *_codex.sh and *_copilot.sh), pause, resume, package
 ├── tests/                         Automated tests (pytest)
-├── docs/HOW-IT-WORKS.md           Technical deep dive
+├── docs/HOW-IT-WORKS.md           Technical deep dive (Claude Code)
+├── docs/CODEX-COPILOT-GUIDE.md    Install and use it with Codex and Copilot
+├── docs/CODEX-COPILOT-PLAN.md     How the Codex and Copilot versions were designed
 ├── .github/workflows/ci.yml       Runs the tests on every push
 ├── .env.example                   Settings template (copied to .env, which is never committed)
 └── requirements.txt               Python packages for the proxy
@@ -329,6 +363,21 @@ Each Mac keeps its own settings and logs, and uses its own Claude sign-in.
 
 ---
 
+### Using it with Codex or GitHub Copilot
+
+Install Workflow Copilot first (steps above), then, from the same folder:
+
+| I use | Run | Then |
+| --- | --- | --- |
+| **Codex CLI** (0.116 or newer) | `bash scripts/install_codex.sh` | Start `codex`, type **`/hooks`** and trust the two Workflow Copilot hooks. Codex skips new hooks until you do. |
+| **GitHub Copilot CLI** (1.0.44 or newer) | `bash scripts/install_copilot.sh` | Restart `copilot`. You'll see "Workflow Copilot is on…". |
+
+Add `--no-routing` (Codex) or `--hooks-only` (Copilot) for suggestions only, with no switching.
+To remove them: `bash scripts/uninstall_codex.sh` or `bash scripts/uninstall_copilot.sh`.
+The full guide is [docs/CODEX-COPILOT-GUIDE.md](docs/CODEX-COPILOT-GUIDE.md).
+
+---
+
 ## Configuration
 
 | Where | What goes there | Committed? |
@@ -427,7 +476,7 @@ personal path.
 | **Your prompts** | With the built-in recommender they never leave your Mac. A cloud router receives at most the first 8,000 characters, once per prompt. Logs record only length and a fingerprint. |
 | **Your settings** | Backed up before every change. Only Workflow Copilot's own entries are touched. Invalid settings files and other gateways' `ANTHROPIC_BASE_URL` are never overwritten. |
 | **Prompts are never blocked** | The hook always lets Claude continue, and its command ends in `\|\| true` so even a deleted hook file can't block a prompt. |
-| **Model switching** | Only to models with a real adapter (Claude). Never fakes a switch to GPT or Gemini. |
+| **Model switching** | Only to models your tool can really run (Claude in Claude Code, your Codex list, your Copilot plan). A model it can't run is shown as advice, never faked. |
 | **Secrets in Git** | `.env`, logs, state and settings are git-ignored. The zip builder refuses to include them. |
 
 > [!CAUTION]
@@ -506,8 +555,8 @@ says which model actually answered.
 
 <br>
 
-Claude Code can only run Claude models, so other recommendations are shown as advice only.
-Switching is never faked.
+Claude Code can only run Claude models, so in Claude Code other recommendations are shown as advice only.
+Codex and Copilot switch to the models in your Codex list or Copilot plan. Switching is never faked.
 </details>
 
 <details>
@@ -553,14 +602,15 @@ Never your prompt text, passwords or keys.
 **Today**
 
 - macOS only (the popup is a macOS window).
-- Switches between **Claude models** only, and needs Claude Code signed in directly with Anthropic (not Bedrock, Vertex or Foundry).
+- Claude Code switches between **Claude models** only, and needs to be signed in directly with Anthropic (not Bedrock, Vertex or Foundry). Codex and Copilot switch within your Codex list and Copilot plan.
+- Codex runs only hooks you trust (`/hooks`). Copilot's extension feature is still labelled experimental by GitHub.
 - The built-in recommender is simple, so you'll see a suggestion on most prompts.
 
 **Next**
 
 - [ ] `/api/route` on the Workflow Copilot website, for real recommendations
 - [ ] Quieter suggestions once the real router is live (no popup when your model already fits)
-- [ ] Provider adapters (OpenRouter and others), so non-Claude recommendations can run too
+- [ ] Provider adapters (OpenRouter and others), so Claude Code can run non-Claude recommendations too
 
 ---
 
@@ -569,12 +619,16 @@ Never your prompt text, passwords or keys.
 | Document | Read it when you want to... |
 | --- | --- |
 | [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md) | Understand the proxy endpoints, install safety checks, router API and known limits |
+| [docs/CODEX-COPILOT-GUIDE.md](docs/CODEX-COPILOT-GUIDE.md) | Install and use Workflow Copilot with Codex CLI and GitHub Copilot CLI |
+| [docs/CODEX-COPILOT-PLAN.md](docs/CODEX-COPILOT-PLAN.md) | See how the Codex and Copilot versions were researched and designed |
 | [.env.example](.env.example) | See every setting |
 | [Claude Code hooks](https://code.claude.com/docs/en/hooks) | Learn how Claude Code hooks work |
+| [Codex hooks](https://developers.openai.com/codex/hooks) | Learn how Codex hooks work |
+| [Copilot CLI hooks](https://docs.github.com/en/copilot/reference/hooks-reference) | Learn how Copilot CLI hooks work |
 | [Workflow Copilot](https://workflow-copilot-ten.vercel.app/analyzer) | Try the prompt analyzer on the web |
 
 ---
 
 <div align="center">
-<sub>Built for Workflow Copilot · Runs locally on your Mac · Your Claude account stays yours</sub>
+<sub>Built for Workflow Copilot · Runs locally on your Mac · Your own accounts stay yours</sub>
 </div>
