@@ -23,6 +23,7 @@
 - [Tech stack](#tech-stack)
 - [Repository layout](#repository-layout)
 - [Getting started](#getting-started)
+  - [Installing on another Mac](#installing-on-another-mac)
 - [Configuration](#configuration)
 - [Commands](#commands)
 - [Connecting the Workflow Copilot router](#connecting-the-workflow-copilot-router)
@@ -280,6 +281,52 @@ Quit Claude Code completely, open it again, and type any prompt. The popup appea
 4. Restart Claude Code.
 </details>
 
+### Installing on another Mac
+
+Want it on a second Mac, or a teammate's? Every Mac gets its own install. Only the code travels.
+Each Mac keeps its own settings and logs, and uses its own Claude sign-in.
+
+**On the other Mac:**
+
+1. **Check the basics.** Open Terminal and run `claude` to make sure Claude Code works and is
+   signed in. Then run `python3 --version`. It should say 3.9 or newer. If `python3` or `git` is
+   missing, run `xcode-select --install` and click **Install**.
+
+2. **Get the code** in one of two ways:
+
+   - **From GitHub:**
+     ```bash
+     git clone https://github.com/UX-ankit1514/Hooks.git ~/workflow-copilot
+     ```
+   - **From a file, no GitHub needed:**
+     1. On a Mac that already has it, run `bash scripts/package.sh`. This makes a zip in the
+        `dist/` folder.
+     2. Send the zip by AirDrop, email or Slack.
+     3. On the new Mac, double-click it, rename the folder to **workflow-copilot**, and move it
+        into your home folder (Finder → **Go → Home**).
+
+3. **Install:**
+   ```bash
+   cd ~/workflow-copilot
+   bash scripts/install.sh --global
+   ```
+
+4. **Try it.** Quit Claude Code completely, start it again with `claude`, and type any prompt. The
+   popup appears.
+
+5. **Check everything** (optional): `bash scripts/doctor.sh`. You get a ✅ or a fix for each
+   part.
+
+> [!NOTE]
+> - **Use `claude`, not `claude -p`.** Scripted runs (`claude -p`) are skipped on purpose, so you
+>   won't see the popup there.
+> - **Settings don't travel.** If you set a router URL or key in `.env` on your Mac, set them
+>   again on the new one. Never send your `.env` file.
+> - **An existing gateway stays in charge.** If the new Mac already sends Claude Code through
+>   another gateway (its own `ANTHROPIC_BASE_URL`), the installer won't override it, and you get
+>   suggestions only.
+> - **To remove it from that Mac:** `bash ~/workflow-copilot/scripts/uninstall.sh --global`
+
 ---
 
 ## Configuration
@@ -363,7 +410,7 @@ The full contract and rehearsal steps are in [docs/HOW-IT-WORKS.md](docs/HOW-IT-
 ## Sharing it
 
 **Send the link:** `https://github.com/UX-ankit1514/Hooks`. The steps in
-[Getting started](#getting-started) are all anyone needs. Each person gets their own local proxy,
+[Installing on another Mac](#installing-on-another-mac) are all anyone needs. Each person gets their own local proxy,
 settings and logs, and uses their own Claude sign-in. Nothing is shared between machines.
 
 Prefer a file? `bash scripts/package.sh` builds a zip in `dist/` that you can AirDrop, email or
